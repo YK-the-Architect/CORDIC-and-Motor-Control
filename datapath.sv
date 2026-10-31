@@ -3,7 +3,8 @@ module datapath #(
     parameter ITER = 8 )(
     input logic clk, rst,
     //control unit inputs
-    input logic init, en, sigma, i, m,
+    input logic init, en, sigma, m,
+    input logic [$clog2(ITER) - 1 : 0] i,
     input logic signed [WIDTH - 1 : 0] x_in, y_in, z_in,
     output logic signed [WIDTH - 1 : 0] x, y, z
     );
