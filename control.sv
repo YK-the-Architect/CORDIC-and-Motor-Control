@@ -8,7 +8,7 @@ module control #(
     input logic mode_cl, mode_rv, start,
     output logic init, en, sigma, m,
     output logic [$clog2(ITER) - 1 : 0] i,
-    output logic out_valid,
+    output logic out_valid
     );
     typedef enum logic [1:0] { 
         IDLE = 0,
