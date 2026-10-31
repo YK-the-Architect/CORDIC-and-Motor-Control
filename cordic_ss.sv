@@ -18,7 +18,7 @@ module cordic_ss #(
     control control#(.WIDTH(WIDTH), .ITER(ITER))(
     .y_msb(y[WIDTH - 1]), 
     .z_msb(z[WIDTH - 1]),
-    .
+    .*
     );
 
     datapath datapath #(
