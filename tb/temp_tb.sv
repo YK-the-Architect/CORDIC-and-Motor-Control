@@ -12,7 +12,7 @@ module temp_tb();
     logic out_valid;
     logic signed [WIDTH - 1 : 0] x, y, z;
 
-    cordic_ss#(.WIDTH(WIDTH), .ITER(ITER))(.*);
+    cordic_ss#(.WIDTH(WIDTH), .ITER(ITER))dut(.*);
 
     initial clk = 0;
     initial forever #10 clk = ~clk;
@@ -30,7 +30,7 @@ module temp_tb();
             start <= 1'b1;
             mode_cl <= $urandom();
             mode_rv <= $urandom();
-            do(@(posedge clk)) while (!out_valid); 
+            do @(posedge clk); while (!out_valid);
             $display("x_in:%h y_in:%h z_in:%h mode_cl:%h mode_rv:%h x_out:%h y_out:%h z_out:%h", x_in, y_in, z_in, mode_cl, mode_rv, x, y, z);
         end
         $finish();

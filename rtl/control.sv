@@ -13,7 +13,7 @@ module control #(
     typedef enum logic [1:0] { 
         IDLE = 0,
         EXE = 1,
-        DONE = 2,
+        DONE = 2
     } state_t;
     typedef enum logic {CIRCULAR = 0, LINEAR = 1} cl_mode_t;
     typedef enum logic {ROTATION = 0, VECTORING = 1} rv_mode_t;
@@ -24,6 +24,7 @@ module control #(
     always_ff @(posedge clk) begin
         if(rst) begin
             state <= IDLE;
+            i<='0; //i was never reset, it started as X
             mode_cl_reg <= CIRCULAR;
             mode_rv_reg <= ROTATION;
         end
@@ -45,6 +46,7 @@ module control #(
         en = 0;
         sigma = 0;
         m = 0;
+        out_valid = 0; //out_valid needed to default too to avoid latch
         case (state)
             IDLE : begin
                 if(start) begin
@@ -57,16 +59,13 @@ module control #(
                 end                
             end
             
-            EXE : begin
-                if(i < ITER) begin
-                    next_state = EXE;
-                    en = 1;
-                    if (mode_rv_reg == ROTATION) sigma = z_msb;
-                    else if(mode_rv_reg == VECTORING) sigma = !y_msb;
-                    if (mode_cl_reg == CIRCULAR) m = 1;
-                    else if(mode_cl_reg == LINEAR) m = 0;
-                end
-                else next_state = DONE;
+            EXE : begin //counter was never moving forward
+                en = 1;
+                m = (mode_cl_reg == CIRCULAR);
+                if (mode_rv_reg == ROTATION) sigma = ~z_msb;
+                else                         sigma = y_msb;
+                next_i = i + 1;
+                if (i == ITER - 1) next_state = DONE;
             end
 
             DONE : begin

@@ -15,15 +15,15 @@ module cordic_ss #(
     logic init, en, sigma, m;
     logic [$clog2(ITER) - 1 : 0] i;
 
-    control control#(.WIDTH(WIDTH), .ITER(ITER))(
+    control #(.WIDTH(WIDTH), .ITER(ITER)) u_control (
     .y_msb(y[WIDTH - 1]), 
     .z_msb(z[WIDTH - 1]),
     .*
     );
 
-    datapath datapath #(
+    datapath #(
     .WIDTH(WIDTH), .ITER(ITER))
-    (.*);
+    u_datapath (.*);
 
 
 endmodule
