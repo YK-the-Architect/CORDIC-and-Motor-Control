@@ -91,6 +91,8 @@ module tb_cordic;
     test_angle(-30.0);
     test_angle(-45.0);
     test_angle(-90.0);
+    test_angle(172.0);
+    test_angle(-130.0);
 
     for (int k = -12; k <= 12; k++)
       test_angle(k * 7.5);

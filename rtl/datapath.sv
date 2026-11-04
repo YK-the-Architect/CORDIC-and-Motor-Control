@@ -12,13 +12,19 @@ module datapath #(
     logic signed [WIDTH - 1 : 0] x_mux_2_reg, y_mux_2_reg, z_mux_2_reg;
     logic signed [WIDTH - 1 : 0] x_as_2_mux, y_as_2_mux, z_as_2_mux;
     logic signed [WIDTH - 1 : 0] xlane_shift, ylane_shift, zlane_shift, ylane_shift_gated;
+    logic signed [WIDTH - 1 : 0] x_in_folded, y_in_folded, z_in_folded;
     logic signed [WIDTH - 1 : 0] z_angle_mux_2_as;
     logic signed [WIDTH - 1 : 0] one_l_shift; 
     logic [WIDTH-1 : 0] atan_tbl[ITER]; // This outputs an array
+
+    assign x_in_folded = ^z_in[WIDTH - 1 : WIDTH - 2] ? -x_in : x_in;
+    assign y_in_folded = ^z_in[WIDTH - 1 : WIDTH - 2] ? -y_in : y_in;
+    assign z_in_folded = ^z_in[WIDTH - 1 : WIDTH - 2] ? {~z_in[WIDTH - 1], z_in[WIDTH - 2 : 0]} : z_in;
+
     //input muxes
-    cordic_mux #(.WIDTH(WIDTH)) x_mux(.sel0(x_as_2_mux), .sel1(x_in), .sel(init), .mux_out(x_mux_2_reg));
-    cordic_mux #(.WIDTH(WIDTH)) y_mux(.sel0(y_as_2_mux), .sel1(y_in), .sel(init), .mux_out(y_mux_2_reg));
-    cordic_mux #(.WIDTH(WIDTH)) z_mux(.sel0(z_as_2_mux), .sel1(z_in), .sel(init), .mux_out(z_mux_2_reg));
+    cordic_mux #(.WIDTH(WIDTH)) x_mux(.sel0(x_as_2_mux), .sel1(x_in_folded), .sel(init), .mux_out(x_mux_2_reg));
+    cordic_mux #(.WIDTH(WIDTH)) y_mux(.sel0(y_as_2_mux), .sel1(y_in_folded), .sel(init), .mux_out(y_mux_2_reg));
+    cordic_mux #(.WIDTH(WIDTH)) z_mux(.sel0(z_as_2_mux), .sel1(z_in_folded), .sel(init), .mux_out(z_mux_2_reg));
     //z mux angle sel
     cordic_mux #(.WIDTH(WIDTH)) z_angle_mux(.sel0(one_l_shift), .sel1($signed(atan_tbl[i])), .sel(m), .mux_out(z_angle_mux_2_as));
 
