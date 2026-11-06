@@ -11,7 +11,7 @@ module datapath #(
     //wires between blocks
     logic signed [WIDTH - 1 : 0] x_mux_2_reg, y_mux_2_reg, z_mux_2_reg;
     logic signed [WIDTH - 1 : 0] x_as_2_mux, y_as_2_mux, z_as_2_mux;
-    logic signed [WIDTH - 1 : 0] xlane_shift, ylane_shift, zlane_shift, ylane_shift_gated;
+    logic signed [WIDTH - 1 : 0] xlane_shift, ylane_shift, ylane_shift_gated;
     logic signed [WIDTH - 1 : 0] z_angle_mux_2_as;
     logic signed [WIDTH - 1 : 0] one_l_shift; 
     logic [WIDTH-1 : 0] atan_tbl[ITER]; // This outputs an array
@@ -33,9 +33,8 @@ module datapath #(
     add_sub #(.WIDTH(WIDTH)) z_lane(.a(z), .b(z_angle_mux_2_as), .add_sub(sigma),  .sum_diff(z_as_2_mux), .overflow());
 
     //shifters
-    shifter #(.WIDTH(WIDTH)) x_lane_shift(.data_in(x), .shift_amt(i), .data_out(xlane_shift));
-    shifter #(.WIDTH(WIDTH)) y_lane_shift(.data_in(y), .shift_amt(i), .data_out(ylane_shift));
-    shifter #(.WIDTH(WIDTH)) z_lane_shift(.data_in(z), .shift_amt(i), .data_out(zlane_shift));
+    shifter #(.WIDTH(WIDTH), .SHIFT_W($clog2(ITER))) x_lane_shift(.data_in(x), .shift_amt(i), .data_out(xlane_shift));
+    shifter #(.WIDTH(WIDTH), .SHIFT_W($clog2(ITER))) y_lane_shift(.data_in(y), .shift_amt(i), .data_out(ylane_shift));
     assign ylane_shift_gated = m ? ylane_shift : '0;
 
     atan_rom #(.WIDTH(WIDTH), .ITER(ITER)) u_atan_rom(.atan_out(atan_tbl));
