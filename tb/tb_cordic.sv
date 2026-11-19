@@ -11,7 +11,7 @@ module tb_cordic;
   localparam int ITER  = 16;
   localparam int ONE   = 1 << 14;
   localparam int K_FIX = 9949;      // round(0.607252935 * 16384)
-  localparam int TOL   = 24;        // allowed error in LSBs
+  localparam int TOL   = 2;         // allowed error in LSBs (RTL change 8: was 24)
 
   logic clk = 0, rst, start, mode_cl, mode_rv;
   logic signed [WIDTH-1:0] x_in, y_in, z_in;
