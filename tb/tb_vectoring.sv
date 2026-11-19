@@ -19,7 +19,7 @@ module tb_vectoring;
   localparam real TURN = real'(1 << W);
   localparam real TOL  = 2.0;
 
-  logic clk = 0, rst, start, mode_cl, mode_rv, out_valid;
+  logic clk = 0, rst, start, mode_cl, mode_rv, out_valid, ovf;
   logic signed [W-1:0] x_in, y_in, z_in, x_corr, y_corr, z;
   cordic_ss #(.WIDTH(W), .ITER(N)) dut (.*);
   always #5 clk = ~clk;
@@ -55,18 +55,12 @@ module tb_vectoring;
     @(negedge clk);
   endtask
 
-  function automatic string cause(real xr, real yr);
-    if (xr < 0)              return "  <- needs RTL change 2 (vectoring pre-rotation for x < 0)";
-    if (xr == 0 && yr == 0)  return "  <- zero vector: the angle comes out as the sum of the atan table";
-    return "";
-  endfunction
-
   task automatic check(input string id, input string what, input real xr, input real yr);
     bit fin, ok; real em, ea;
     vec(xr, yr, fin, em, ea);
-    ok = fin && fabs(em) <= TOL && fabs(ea) <= TOL;
+    ok = fin && fabs(em) <= TOL && fabs(ea) <= TOL && !ovf;
     $display("%s %s  %-30s (%5.2f, %5.2f)  mag err %7.2f LSB  angle err %9.2f LSB%s",
-             ok ? "PASS" : "FAIL", id, what, xr, yr, em, ea, ok ? "" : cause(xr, yr));
+             ok ? "PASS" : "FAIL", id, what, xr, yr, em, ea, ovf ? "  ovf = 1" : "");
     if (ok) n_pass++; else n_fail++;
   endtask
 
@@ -103,9 +97,8 @@ module tb_vectoring;
       if (fin && fabs(em) <= TOL && fabs(ea) <= TOL) qpass[qd]++;
     end
     for (int k = 0; k < 4; k++) begin
-      $display("%s F7  random, quadrant %-16s %4d of %4d within 2 LSB%s",
-               qpass[k] == qtot[k] ? "PASS" : "FAIL", qname[k], qpass[k], qtot[k],
-               (qpass[k] != qtot[k] && (k == 1 || k == 2)) ? "  <- needs RTL change 2 (x < 0)" : "");
+      $display("%s F7  random, quadrant %-16s %4d of %4d within 2 LSB",
+               qpass[k] == qtot[k] ? "PASS" : "FAIL", qname[k], qpass[k], qtot[k]);
       if (qpass[k] == qtot[k]) n_pass++; else n_fail++;
     end
 

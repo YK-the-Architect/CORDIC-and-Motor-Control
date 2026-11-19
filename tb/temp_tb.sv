@@ -12,7 +12,7 @@ module temp_tb();
     logic out_valid;
     logic signed [WIDTH - 1 : 0] x, y, z;
 
-    cordic_ss#(.WIDTH(WIDTH), .ITER(ITER))dut(.x_corr(x), .y_corr(y), .*);
+    cordic_ss#(.WIDTH(WIDTH), .ITER(ITER))dut(.x_corr(x), .y_corr(y), .ovf(), .*);
 
     initial clk = 0;
     initial forever #10 clk = ~clk;

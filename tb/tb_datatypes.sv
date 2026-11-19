@@ -10,8 +10,7 @@
 //
 // Expected values come from real math in the testbench, using the quantized inputs,
 // so the error measured is the engine's own. Errors are in LSBs of the output type.
-// Vectoring uses x > 0 and multiply uses |z| < 0.5 until RTL changes 1 and 2 land
-// (the full-angle fold currently folds linear mode too, and vectoring needs x >= 0).
+// Vectoring covers all four quadrants and multiply the full z range (RTL changes 1 and 2).
 
 module dt_check #(
   parameter int W = 16,              // word width
@@ -30,7 +29,7 @@ module dt_check #(
   localparam real QZL  = real'(1 << (W - 1));   // linear z: Q1.(W-1)
   localparam real TURN = real'(1 << W);         // circular z: 2^W = 360 degrees
 
-  logic rst, start, mode_cl, mode_rv, out_valid;
+  logic rst, start, mode_cl, mode_rv, out_valid, ovf;
   logic signed [W-1:0] x_in, y_in, z_in, x_corr, y_corr, z;
 
   cordic_ss #(.WIDTH(W), .ITER(N), .G(G)) dut (.*);
@@ -109,12 +108,12 @@ module dt_check #(
       add(ry, yo - ey * QXY);
     end
 
-    // vectoring (circular): x > 0 for now, |v| >= 0.25 so the angle is defined to an LSB
+    // vectoring (circular): all four quadrants, |v| >= 0.25 so the angle is defined to an LSB
     for (int k = 0; k < NVEC; k++) begin
       do begin
-        xi = q(urand(0.0, 0.7), QXY); yi = q(urand(-0.7, 0.7), QXY);
+        xi = q(urand(-0.7, 0.7), QXY); yi = q(urand(-0.7, 0.7), QXY);
         x0 = xi / QXY; y0 = yi / QXY;
-      end while (xi <= 0 || $sqrt(x0 * x0 + y0 * y0) < 0.25);
+      end while ($sqrt(x0 * x0 + y0 * y0) < 0.25);
       op(0, 1, xi, yi, 0, xo, yo, zo);
       mag = $sqrt(x0 * x0 + y0 * y0);
       ang = $atan2(y0, x0) / (2.0 * PI) * TURN;
@@ -122,9 +121,9 @@ module dt_check #(
       add(va, wrap_turn(zo - ang));
     end
 
-    // multiply (linear rotation): y = x * z, |z| < 0.5 for now
+    // multiply (linear rotation): y = x * z, |x| <= 1, |z| < 0.99
     for (int k = 0; k < NVEC / 4; k++) begin
-      xi = q(urand(-1.0, 1.0), QXY); zi = q(urand(-0.49, 0.49), QZL);
+      xi = q(urand(-1.0, 1.0), QXY); zi = q(urand(-0.99, 0.99), QZL);
       x0 = xi / QXY; z0 = zi / QZL;
       op(1, 0, xi, 0, zi, xo, yo, zo);
       add(ml, yo - x0 * z0 * QXY);
