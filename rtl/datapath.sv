@@ -27,21 +27,23 @@ module datapath #(
     logic signed [IW - 1 : 0] z_angle_mux_2_as;
     logic signed [IW - 1 : 0] one_l_shift;
     logic [IW-1 : 0] atan_tbl[ITER]; // This outputs an array
-    logic fold, zhold, x_ovf, y_ovf, z_ovf;
+    logic fold, neg_xy, zhold, x_ovf, y_ovf, z_ovf;
 
     //pre-rotation by 180 degrees, circular mode only (RTL changes 1 and 2). Rotating (x, y)
     //by 180 degrees gives (-x, -y), and z moves by 180 degrees (its MSB flips).
     //  rotation:  fold when z_in is in quadrant II or III, so z starts within +-90 degrees
     //  vectoring: fold when x_in < 0, so the vector starts in quadrant I or IV
-    //  linear:    never fold; z is a number there, not an angle
+    //  linear:    never fold z; it is a number there, not an angle
     assign fold = !mode_cl && (mode_rv ? x_in[WIDTH - 1] : ^z_in[WIDTH - 1 : WIDTH - 2]);
+    //divide only converges for x > 0, and y / x = (-y) / (-x): for x < 0, negate both, keep z
+    assign neg_xy = fold || (mode_cl && mode_rv && x_in[WIDTH - 1]);
 
     //inputs enter the lanes: sign-extended into the headroom bits, guard bits start at 0.
     //The fold negates in the wide lane, so -(-2.0) = +2.0 fits instead of overflowing.
     assign x_in_ext  = IW'(x_in) <<< G;
     assign y_in_ext  = IW'(y_in) <<< G;
-    assign x_in_lane = fold ? -x_in_ext : x_in_ext;
-    assign y_in_lane = fold ? -y_in_ext : y_in_ext;
+    assign x_in_lane = neg_xy ? -x_in_ext : x_in_ext;
+    assign y_in_lane = neg_xy ? -y_in_ext : y_in_ext;
     assign z_in_folded = fold ? {~z_in[WIDTH - 1], z_in[WIDTH - 2 : 0]} : z_in;
     assign z_in_lane = IW'(z_in_folded) <<< G;
 
