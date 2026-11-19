@@ -3,7 +3,7 @@
 // tb_cordic.sv : self-checking testbench for cordic_ss
 // x, y : signed 16-bit Q2.14 (1.0 = 16384)
 // z    : signed 16-bit binary angle units (360 deg = 65536)
-// Circular + rotation, start vector (K, 0) so output = (cos, sin)
+// Circular + rotation, start vector (1, 0) so output = (cos, sin); the engine applies x K itself
 //------------------------------------------------------------------
 module tb_cordic;
 
@@ -42,7 +42,7 @@ module tb_cordic;
     exp_y = $rtoi($sin(rad) * ONE + ($sin(rad) >= 0 ? 0.5 : -0.5));
 
     @(negedge clk);
-    x_in = K_FIX; y_in = 0; z_in = deg2z(deg);
+    x_in = ONE; y_in = 0; z_in = deg2z(deg);   // x K is now inside the engine, so start at (1, 0)
     mode_cl = 0; mode_rv = 0;
     start = 1;
     @(negedge clk);
