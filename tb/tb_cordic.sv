@@ -18,7 +18,7 @@ module tb_cordic;
   logic signed [WIDTH-1:0] x, y, z;
   logic out_valid;
 
-  cordic_ss #(.WIDTH(WIDTH), .ITER(ITER)) dut (.*);
+  cordic_ss #(.WIDTH(WIDTH), .ITER(ITER)) dut (.x_corr(x), .y_corr(y), .*);
 
   always #5 clk = ~clk;             // 100 MHz
 
@@ -91,6 +91,8 @@ module tb_cordic;
     test_angle(-30.0);
     test_angle(-45.0);
     test_angle(-90.0);
+    test_angle(172.0);
+    test_angle(-130.0);
 
     for (int k = -12; k <= 12; k++)
       test_angle(k * 7.5);

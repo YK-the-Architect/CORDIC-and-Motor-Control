@@ -9,10 +9,12 @@ module cordic_ss #(
     input logic start,
     input logic mode_cl, mode_rv,
     output logic out_valid,
-    output logic signed [WIDTH - 1 : 0] x, y, z
+    output logic signed [WIDTH - 1 : 0] x_corr, y_corr, z
 );
 
-    logic init, en, sigma, m;
+    logic signed [WIDTH - 1 : 0] x , y;
+
+    logic init, en, sigma, m, scale_en;
     logic [$clog2(ITER) - 1 : 0] i;
 
     control #(.WIDTH(WIDTH), .ITER(ITER)) u_control (
@@ -24,6 +26,10 @@ module cordic_ss #(
     datapath #(
     .WIDTH(WIDTH), .ITER(ITER))
     u_datapath (.*);
+
+    error_correction #(
+    .WIDTH(WIDTH))
+    u_error_correction(.*);
 
 
 endmodule

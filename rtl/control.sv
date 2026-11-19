@@ -8,7 +8,7 @@ module control #(
     input logic mode_cl, mode_rv, start,
     output logic init, en, sigma, m,
     output logic [$clog2(ITER) - 1 : 0] i,
-    output logic out_valid
+    output logic out_valid, scale_en
     );
     typedef enum logic [1:0] { 
         IDLE = 0,
@@ -47,6 +47,7 @@ module control #(
         sigma = 0;
         m = 0;
         out_valid = 0; //out_valid needed to default too to avoid latch
+        scale_en = 0;
         case (state)
             IDLE : begin
                 if(start) begin
@@ -69,6 +70,7 @@ module control #(
             end
 
             DONE : begin
+                if(mode_cl_reg == CIRCULAR) scale_en = 1;
                 out_valid = 1;
                 next_state = IDLE;
             end
