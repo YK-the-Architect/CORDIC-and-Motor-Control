@@ -6,9 +6,11 @@ module datapath #(
     //control unit inputs
     input logic init, en, sigma, m,
     input logic [$clog2(ITER) - 1 : 0] i,
+    input logic mode_cl, mode_rv,          //mode inputs, used when init loads a new operation
     input logic signed [WIDTH - 1 : 0] x_in, y_in, z_in,
     //lanes leave at full internal width; the output stage rounds them back to WIDTH bits
-    output logic signed [WIDTH + 2 + G - 1 : 0] x, y, z
+    output logic signed [WIDTH + 2 + G - 1 : 0] x, y, z,
+    output logic lane_ovf                  //an add/sub overflowed this clock (for ovf)
     );
     //lane width (RTL change 3): WIDTH plus 2 headroom bits on top, so x and y can grow
     //by the CORDIC gain (1.647 * sqrt(2) at most) without overflowing, plus G guard bits
@@ -19,20 +21,36 @@ module datapath #(
     logic signed [IW - 1 : 0] x_mux_2_reg, y_mux_2_reg, z_mux_2_reg;
     logic signed [IW - 1 : 0] x_as_2_mux, y_as_2_mux, z_as_2_mux;
     logic signed [IW - 1 : 0] xlane_shift, ylane_shift, ylane_shift_gated;
-    logic signed [WIDTH - 1 : 0] x_in_folded, y_in_folded, z_in_folded;
+    logic signed [WIDTH - 1 : 0] z_in_folded;
+    logic signed [IW - 1 : 0] x_in_ext, y_in_ext;
     logic signed [IW - 1 : 0] x_in_lane, y_in_lane, z_in_lane;
     logic signed [IW - 1 : 0] z_angle_mux_2_as;
     logic signed [IW - 1 : 0] one_l_shift;
     logic [IW-1 : 0] atan_tbl[ITER]; // This outputs an array
+    logic fold, zhold, x_ovf, y_ovf, z_ovf;
 
-    assign x_in_folded = ^z_in[WIDTH - 1 : WIDTH - 2] ? -x_in : x_in;
-    assign y_in_folded = ^z_in[WIDTH - 1 : WIDTH - 2] ? -y_in : y_in;
-    assign z_in_folded = ^z_in[WIDTH - 1 : WIDTH - 2] ? {~z_in[WIDTH - 1], z_in[WIDTH - 2 : 0]} : z_in;
+    //pre-rotation by 180 degrees, circular mode only (RTL changes 1 and 2). Rotating (x, y)
+    //by 180 degrees gives (-x, -y), and z moves by 180 degrees (its MSB flips).
+    //  rotation:  fold when z_in is in quadrant II or III, so z starts within +-90 degrees
+    //  vectoring: fold when x_in < 0, so the vector starts in quadrant I or IV
+    //  linear:    never fold; z is a number there, not an angle
+    assign fold = !mode_cl && (mode_rv ? x_in[WIDTH - 1] : ^z_in[WIDTH - 1 : WIDTH - 2]);
 
-    //inputs enter the lanes: sign-extended into the headroom bits, guard bits start at 0
-    assign x_in_lane = IW'(x_in_folded) <<< G;
-    assign y_in_lane = IW'(y_in_folded) <<< G;
+    //inputs enter the lanes: sign-extended into the headroom bits, guard bits start at 0.
+    //The fold negates in the wide lane, so -(-2.0) = +2.0 fits instead of overflowing.
+    assign x_in_ext  = IW'(x_in) <<< G;
+    assign y_in_ext  = IW'(y_in) <<< G;
+    assign x_in_lane = fold ? -x_in_ext : x_in_ext;
+    assign y_in_lane = fold ? -y_in_ext : y_in_ext;
+    assign z_in_folded = fold ? {~z_in[WIDTH - 1], z_in[WIDTH - 2 : 0]} : z_in;
     assign z_in_lane = IW'(z_in_folded) <<< G;
+
+    //a zero vector has no angle: in circular vectoring, hold z so the angle out is z_in
+    //(0 when z_in = 0) instead of the sum of the whole atan table
+    always_ff @(posedge clk) begin
+        if (rst) zhold <= 1'b0;
+        else if (init) zhold <= !mode_cl && mode_rv && (x_in == '0) && (y_in == '0);
+    end
 
     //input muxes
     cordic_mux #(.WIDTH(IW)) x_mux(.sel0(x_as_2_mux), .sel1(x_in_lane), .sel(init), .mux_out(x_mux_2_reg));
@@ -44,12 +62,13 @@ module datapath #(
     //x y z registers
     sync_reg #(.WIDTH(IW)) x_reg(.clk(clk), .rst(rst), .en(en), .data_in(x_mux_2_reg), .data_out(x));
     sync_reg #(.WIDTH(IW)) y_reg(.clk(clk), .rst(rst), .en(en), .data_in(y_mux_2_reg), .data_out(y));
-    sync_reg #(.WIDTH(IW)) z_reg(.clk(clk), .rst(rst), .en(en), .data_in(z_mux_2_reg), .data_out(z));
+    sync_reg #(.WIDTH(IW)) z_reg(.clk(clk), .rst(rst), .en(en && !(zhold && !init)), .data_in(z_mux_2_reg), .data_out(z));
 
-    //add sub
-    add_sub #(.WIDTH(IW)) x_lane(.a(x), .b(ylane_shift_gated), .add_sub(sigma),  .sum_diff(x_as_2_mux), .overflow());
-    add_sub #(.WIDTH(IW)) y_lane(.a(y), .b(xlane_shift), .add_sub(!sigma), .sum_diff(y_as_2_mux), .overflow());
-    add_sub #(.WIDTH(IW)) z_lane(.a(z), .b(z_angle_mux_2_as), .add_sub(sigma),  .sum_diff(z_as_2_mux), .overflow());
+    //add sub (RTL change 5: the overflow flags now go to the ovf output)
+    add_sub #(.WIDTH(IW)) x_lane(.a(x), .b(ylane_shift_gated), .add_sub(sigma),  .sum_diff(x_as_2_mux), .overflow(x_ovf));
+    add_sub #(.WIDTH(IW)) y_lane(.a(y), .b(xlane_shift), .add_sub(!sigma), .sum_diff(y_as_2_mux), .overflow(y_ovf));
+    add_sub #(.WIDTH(IW)) z_lane(.a(z), .b(z_angle_mux_2_as), .add_sub(sigma),  .sum_diff(z_as_2_mux), .overflow(z_ovf));
+    assign lane_ovf = x_ovf | y_ovf | z_ovf;
 
     //shifters
     shifter #(.WIDTH(IW), .SHIFT_W($clog2(ITER))) x_lane_shift(.data_in(x), .shift_amt(i), .data_out(xlane_shift));

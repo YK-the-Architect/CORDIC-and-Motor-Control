@@ -72,7 +72,17 @@ module control #(
             DONE : begin
                 if(mode_cl_reg == CIRCULAR) scale_en = 1;
                 out_valid = 1;
-                next_state = IDLE;
+                //RTL change 7: a start in the out_valid clock begins the next operation
+                //right away (back to back) instead of being dropped
+                if(start) begin
+                    next_state = EXE;
+                    next_mode_cl_reg = mode_cl ? LINEAR : CIRCULAR;
+                    next_mode_rv_reg = mode_rv ? VECTORING : ROTATION;
+                    next_i = mode_cl ? 1 : 0;
+                    init = 1;
+                    en = 1;
+                end
+                else next_state = IDLE;
             end
         endcase
     end
