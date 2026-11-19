@@ -12,7 +12,9 @@ module error_correction #(
     output  logic signed [WIDTH - 1 : 0] x_corr, y_corr, z_corr
 );
     localparam int IW = WIDTH + 2 + G;   // lane width
-    localparam int F = WIDTH + 2 + G;    // fraction bits of K: enough to keep the guard bits
+    //fraction bits of K. WIDTH + 2 keeps the error from K under 0.1 LSB; WIDTH + 2 + G was
+    //no more accurate in tb_datatypes but cost about 900 more cells at W = 16 (15 terms vs 10)
+    localparam int F = WIDTH + 2;
     localparam logic [F:0] C = (F + 1)'(int'(0.6072529 * (2.0 ** F))); //the correction factor
 
     logic signed [IW+F:0] x_ext, x_acc, y_ext, y_acc, z_ext;
