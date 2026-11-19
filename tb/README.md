@@ -31,3 +31,4 @@ Each testbench prints one PASS or FAIL line per case and a `DONE:` line at the e
 
 - F2, F4 at ±135°, F7 quadrants II and III: vectoring with x < 0 needs RTL change 2 (vectoring pre-rotation).
 - F5: the zero vector returns the sum of the atan table (99.9°) as its angle; the spec says 0.
+- Multiply with |z| ≥ 0.5 is wrong (0.5 × 0.75 gives 0.125): the full-angle fold also folds linear mode. Needs RTL change 1 (fold only in circular mode). `tb_datatypes` keeps |z| below 0.5 until then.
