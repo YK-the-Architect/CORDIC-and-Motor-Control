@@ -1,0 +1,109 @@
+`timescale 1ns/1ps
+
+module tb_cordic_pipe;
+  localparam int WIDTH = 16;
+  localparam int ITER  = 16;
+  localparam int ONE   = 1 << 14;
+  localparam int TOL   = 2;
+
+  logic clk = 0, rst, start, mode_cl, mode_rv;
+  logic signed [WIDTH-1:0] x_in, y_in, z_in;
+  logic signed [WIDTH-1:0] x, y, z;
+  logic out_valid, ovf;
+
+  cordic_pipe #(.WIDTH(WIDTH), .ITER(ITER)) dut (
+      .clk(clk), .rst(rst), .start(start),
+      .mode_cl(mode_cl), .mode_rv(mode_rv),
+      .x_in(x_in), .y_in(y_in), .z_in(z_in),
+      .out_valid(out_valid), .x_corr(x), .y_corr(y), .z(z), .ovf(ovf)
+  );
+
+  always #5 clk = ~clk;
+
+  int n_pass = 0, n_fail = 0;
+
+  function automatic logic signed [WIDTH-1:0] deg2z(real deg);
+    int v;
+    begin
+      v = $rtoi(deg / 360.0 * 65536.0 + (deg >= 0 ? 0.5 : -0.5));
+      deg2z = v[WIDTH-1:0];
+    end
+  endfunction
+
+  function automatic int iabs(int v);
+    return (v < 0) ? -v : v;
+  endfunction
+
+  task automatic test_angle(input real deg);
+    int exp_x, exp_y, err_x, err_y, cycles;
+    real rad, c, s;
+    begin
+      rad = deg * 3.141592653589793 / 180.0;
+      c = $cos(rad);
+      s = $sin(rad);
+      exp_x = $rtoi(c * ONE + (c >= 0 ? 0.5 : -0.5));
+      exp_y = $rtoi(s * ONE + (s >= 0 ? 0.5 : -0.5));
+
+      @(negedge clk);
+      x_in = ONE;
+      y_in = 0;
+      z_in = deg2z(deg);
+      mode_cl = 0;
+      mode_rv = 0;
+      start = 1;
+      @(negedge clk);
+      start = 0;
+
+      cycles = 0;
+      while (!out_valid && cycles < 2*ITER) begin
+        @(negedge clk);
+        cycles++;
+      end
+
+      err_x = iabs(int'(x) - exp_x);
+      err_y = iabs(int'(y) - exp_y);
+      if (out_valid && err_x <= TOL && err_y <= TOL) begin
+        $display("PASS %7.1f deg | latency=%0d | x=%0d y=%0d",
+                 deg, cycles, x, y);
+        n_pass++;
+      end
+      else begin
+        $display("FAIL %7.1f deg | latency=%0d | x=%0d exp=%0d y=%0d exp=%0d",
+                 deg, cycles, x, exp_x, y, exp_y);
+        n_fail++;
+      end
+      repeat (2) @(negedge clk);
+    end
+  endtask
+
+  initial begin
+    $dumpfile("tb_cordic_pipe.vcd");
+    $dumpvars(0, tb_cordic_pipe);
+
+    rst = 1;
+    start = 0;
+    mode_cl = 0;
+    mode_rv = 0;
+    x_in = 0;
+    y_in = 0;
+    z_in = 0;
+
+    repeat (3) @(negedge clk);
+    rst = 0;
+    repeat (2) @(negedge clk);
+
+    test_angle(0.0);
+    test_angle(30.0);
+    test_angle(45.0);
+    test_angle(60.0);
+    test_angle(90.0);
+    test_angle(-30.0);
+    test_angle(-90.0);
+    test_angle(172.0);
+    test_angle(-130.0);
+
+    $display("--------------------------------------");
+    $display("DONE: %0d passed, %0d failed", n_pass, n_fail);
+    $finish;
+  end
+endmodule
