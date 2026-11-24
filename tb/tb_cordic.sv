@@ -3,7 +3,7 @@
 // tb_cordic.sv : self-checking testbench for cordic_ss
 // x, y : signed 16-bit Q2.14 (1.0 = 16384)
 // z    : signed 16-bit binary angle units (360 deg = 65536)
-// Circular + rotation, start vector (K, 0) so output = (cos, sin)
+// Circular + rotation, start vector (1, 0) so output = (cos, sin); the engine applies x K itself
 //------------------------------------------------------------------
 module tb_cordic;
 
@@ -11,14 +11,14 @@ module tb_cordic;
   localparam int ITER  = 16;
   localparam int ONE   = 1 << 14;
   localparam int K_FIX = 9949;      // round(0.607252935 * 16384)
-  localparam int TOL   = 24;        // allowed error in LSBs
+  localparam int TOL   = 2;         // allowed error in LSBs (RTL change 8: was 24)
 
   logic clk = 0, rst, start, mode_cl, mode_rv;
   logic signed [WIDTH-1:0] x_in, y_in, z_in;
   logic signed [WIDTH-1:0] x, y, z;
   logic out_valid;
 
-  cordic_ss #(.WIDTH(WIDTH), .ITER(ITER)) dut (.*);
+  cordic_ss #(.WIDTH(WIDTH), .ITER(ITER)) dut (.x_corr(x), .y_corr(y), .ovf(), .*);
 
   always #5 clk = ~clk;             // 100 MHz
 
@@ -42,7 +42,7 @@ module tb_cordic;
     exp_y = $rtoi($sin(rad) * ONE + ($sin(rad) >= 0 ? 0.5 : -0.5));
 
     @(negedge clk);
-    x_in = K_FIX; y_in = 0; z_in = deg2z(deg);
+    x_in = ONE; y_in = 0; z_in = deg2z(deg);   // x K is now inside the engine, so start at (1, 0)
     mode_cl = 0; mode_rv = 0;
     start = 1;
     @(negedge clk);
@@ -91,6 +91,8 @@ module tb_cordic;
     test_angle(-30.0);
     test_angle(-45.0);
     test_angle(-90.0);
+    test_angle(172.0);
+    test_angle(-130.0);
 
     for (int k = -12; k <= 12; k++)
       test_angle(k * 7.5);
