@@ -1,10 +1,14 @@
-//single cycle implmenetation top level
+//single cycle implementation top level: the iterative engine. One set of adders is used once per
+//iteration (control FSM + datapath), then the output stage applies x K, rounding and saturation.
 module cordic_ss #(
     parameter WIDTH = 8,
     parameter ITER = 8,
     //guard bits in the lanes (RTL change 3). ceil(log2 N) + 1: tb_datatypes showed divide needs
     //the extra bit to stay within 2 LSB at W = 16 (2.4 LSB with ceil(log2 N)). 0 turns them off.
-    parameter G = $clog2(ITER) + 1
+    parameter G = $clog2(ITER) + 1,
+    //1: out_valid one clock later, so the output stage gets 2 clocks (a multicycle path, see
+    //control.sv and syn/cordic_ss_mcp.sdc). 0: as before.
+    parameter bit OUT_WAIT = 0
 )
 (
     input logic clk, rst,
@@ -12,6 +16,9 @@ module cordic_ss #(
     input logic start,
     input logic mode_cl, mode_rv,
     output logic out_valid,
+    //start/ready handshake: a start is taken on a clock with start && ready. ready is 1 in IDLE
+    //and in the out_valid clock (a start there runs back to back), 0 while an operation runs.
+    output logic ready,
     output logic signed [WIDTH - 1 : 0] x_corr, y_corr, z,
     //RTL change 5: a result saturated, a lane overflowed, or a divide was out of range.
     //Valid with out_valid; holds until the next start.
@@ -25,7 +32,7 @@ module cordic_ss #(
     logic init, en, sigma, m, scale_en, lane_ovf, sat, ovf_hold, div_bad;
     logic [$clog2(ITER) - 1 : 0] i;
 
-    control #(.WIDTH(WIDTH), .ITER(ITER)) u_control (
+    control #(.WIDTH(WIDTH), .ITER(ITER), .OUT_WAIT(OUT_WAIT)) u_control (
     .y_msb(y[IW - 1]),
     .z_msb(z_lane[IW - 1]),
     .*

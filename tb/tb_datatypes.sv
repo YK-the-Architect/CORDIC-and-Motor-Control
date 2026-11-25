@@ -29,7 +29,7 @@ module dt_check #(
   localparam real QZL  = real'(1 << (W - 1));   // linear z: Q1.(W-1)
   localparam real TURN = real'(1 << W);         // circular z: 2^W = 360 degrees
 
-  logic rst, start, mode_cl, mode_rv, out_valid, ovf;
+  logic rst, start, mode_cl, mode_rv, out_valid, ovf, ready;
   logic signed [W-1:0] x_in, y_in, z_in, x_corr, y_corr, z;
 
   cordic_ss #(.WIDTH(W), .ITER(N), .G(G)) dut (.*);

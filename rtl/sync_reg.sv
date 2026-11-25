@@ -1,4 +1,5 @@
-//synchronous register
+//synchronous register for one lane: reset to 0 (synchronous, wins over en),
+//loads data_in on a rising edge when en = 1, holds its value when en = 0
 module sync_reg #(parameter WIDTH = 8)(
     input logic clk, rst, en,
     input logic [WIDTH - 1 : 0] data_in,

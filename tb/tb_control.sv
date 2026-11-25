@@ -9,11 +9,14 @@
 //   D7  N not a power of 2: N = 12 and 20    -> exactly N iterations (N - 1 in linear mode)
 //   D8  Mode change between runs             -> each correct; mode latched at start
 //   D9  Input mux: init = 1, then 0          -> loads the inputs, then feeds back
+//   D10 OUT_WAIT = 1 (multicycle output)     -> same results as OUT_WAIT = 0, one clock later; start in HOLD ignored
+//   D11 start/ready handshake                -> ready high in IDLE and with out_valid, low while busy; over 3,000
+//                                               clocks of random start pulses, a start is taken exactly when ready = 1
 
 // D7 helper: latency and a quick result check at another N
 module d7_check #(parameter int N = 12) (input logic clk, output int passed, output int failed, output logic done);
   localparam int W = 16;
-  logic rst, start, mode_cl, mode_rv, out_valid, ovf;
+  logic rst, start, mode_cl, mode_rv, out_valid, ovf, ready;
   logic signed [W-1:0] x_in, y_in, z_in, x_corr, y_corr, z;
   cordic_ss #(.WIDTH(W), .ITER(N)) dut (.*);
   `include "tb_common.svh"
@@ -38,9 +41,49 @@ module d7_check #(parameter int N = 12) (input logic clk, output int passed, out
   end
 endmodule
 
+// D10 helper: an OUT_WAIT = 1 engine and an OUT_WAIT = 0 engine on the same inputs
+module d10_check (input logic clk, output int passed, output int failed, output logic done);
+  localparam int W = 16, N = 16;
+  logic rst, start, mode_cl, mode_rv, out_valid, ovf, ready, ov0, of0;
+  logic signed [W-1:0] x_in, y_in, z_in, x_corr, y_corr, z, x0, y0, z0;
+  cordic_ss #(.WIDTH(W), .ITER(N), .OUT_WAIT(1)) dut (.*);
+  cordic_ss #(.WIDTH(W), .ITER(N)) ref0 (.clk, .rst, .x_in, .y_in, .z_in, .start, .mode_cl, .mode_rv,
+                                          .out_valid(ov0), .x_corr(x0), .y_corr(y0), .z(z0), .ovf(of0));
+  `include "tb_common.svh"
+  int r0 [4];
+  always @(posedge clk) if (ov0) r0 = '{x0, y0, z0, of0};   // the OUT_WAIT = 0 result
+  initial begin
+    int xo, yo, zo, lat, bad, badlat; bit of, cl, ok;
+    done = 0; bad = 0; badlat = 0;
+    reset_dut();
+    void'($urandom(10));
+    for (int k = 0; k < 2000; k++) begin
+      cl = $urandom_range(1);
+      op(cl, $urandom_range(1), int'($urandom_range(65535)) - 32768, int'($urandom_range(65535)) - 32768,
+         int'($urandom_range(65535)) - 32768, xo, yo, zo, of, lat);
+      if (xo != r0[0] || yo != r0[1] || zo != r0[2] || of != r0[3][0]) bad++;
+      if (lat != (cl ? N + 1 : N + 2)) badlat++;
+    end
+    result("D10", "OUT_WAIT = 1: 2,000 results identical, 1 clock later", bad == 0 && badlat == 0,
+           $sformatf("%0d different, %0d wrong latency", bad, badlat));
+    // start during HOLD is ignored, like start during EXE
+    @(negedge clk); mode_cl = 0; mode_rv = 0; x_in = q(0.5, QXY); y_in = 0; z_in = deg2z(40.0); start = 1;
+    @(negedge clk); start = 0;
+    repeat (N) @(negedge clk);
+    ok = dut.u_control.state == 3;                                // HOLD
+    mode_cl = 1; mode_rv = 1; x_in = q(0.9, QXY); y_in = q(0.2, QXY); start = 1;
+    @(negedge clk); start = 0;
+    ok = ok && out_valid && fabs(x_corr - 0.5 * $cos(40.0 * PI / 180.0) * QXY) <= 2.0;
+    @(negedge clk);
+    ok = ok && !out_valid && dut.u_control.state == 0;
+    result("D10", "start in HOLD ignored", ok, "");
+    passed = n_pass; failed = n_fail; done = 1;
+  end
+endmodule
+
 module tb_control;
   localparam int W = 16, N = 16;
-  logic clk = 0, rst, start, mode_cl, mode_rv, out_valid, ovf;
+  logic clk = 0, rst, start, mode_cl, mode_rv, out_valid, ovf, ready;
   logic signed [W-1:0] x_in, y_in, z_in, x_corr, y_corr, z;
   cordic_ss #(.WIDTH(W), .ITER(N)) dut (.*);
   always #5 clk = ~clk;
@@ -50,6 +93,9 @@ module tb_control;
   logic d12, d20;
   d7_check #(.N(12)) n12 (.clk, .passed(p12), .failed(f12), .done(d12));
   d7_check #(.N(20)) n20 (.clk, .passed(p20), .failed(f20), .done(d20));
+  int p10, f10;
+  logic d10;
+  d10_check w1 (.clk, .passed(p10), .failed(f10), .done(d10));
 
   // rotation of (0.5, 0) by deg, expected outputs in LSBs
   function automatic real rx(real deg); return 0.5 * $cos(deg * PI / 180.0) * QXY; endfunction
@@ -141,8 +187,45 @@ module tb_control;
     @(negedge clk);
     result("D9", "init loads the inputs, then the lanes feed back", ok, "");
 
-    wait (d12 && d20);
-    $display("DONE: %0d passed, %0d failed", n_pass + p12 + p20, n_fail + f12 + f20);
+    // D11: ready = 1 exactly when a start would be taken (IDLE, and the out_valid clock)
+    @(negedge clk);
+    ok = ready && (dut.u_control.state == 0);
+    mode_cl = 0; mode_rv = 0; x_in = q(0.5, QXY); y_in = 0; z_in = deg2z(30.0); start = 1;
+    @(negedge clk); start = 0; t = 0;
+    while (!out_valid && t < 4 * N) begin ok = ok && !ready; @(negedge clk); t++; end
+    ok = ok && out_valid && ready;                    // the out_valid clock
+    @(negedge clk);
+    ok = ok && ready && !out_valid;                   // back in IDLE
+    result("D11", "ready high in IDLE and with out_valid, low while busy", ok, "");
+    // random start pulses: a start must be taken (FSM re-initializes) exactly when ready = 1
+    begin
+      int taken_ok, ignored_ok, n_taken, n_ignored; bit s_q, r_q; logic [3:0] i_q; logic [1:0] st_q;
+      taken_ok = 1; ignored_ok = 1; n_taken = 0; n_ignored = 0;
+      void'($urandom(11));
+      repeat (3000) begin
+        @(negedge clk);
+        start = ($urandom_range(99) < 30);
+        mode_cl = $urandom_range(1); mode_rv = $urandom_range(1);
+        x_in = int'($urandom_range(65535)) - 32768; y_in = int'($urandom_range(65535)) - 32768; z_in = int'($urandom_range(65535)) - 32768;
+        s_q = start; r_q = ready; i_q = dut.u_control.i; st_q = dut.u_control.state;
+        @(posedge clk); #1;
+        if (s_q && r_q) begin                          // taken: now in EXE, counter at its first value
+          n_taken++;
+          if (!(dut.u_control.state == 1 && dut.u_control.i == (mode_cl ? 1 : 0))) taken_ok = 0;
+        end else if (s_q) begin                        // ignored: the run in progress carries on
+          n_ignored++;
+          if (st_q == 1 && !(dut.u_control.i == 4'(i_q + 1))) ignored_ok = 0;
+          if (st_q == 3 && dut.u_control.state != 2) ignored_ok = 0;
+        end
+      end
+      @(negedge clk); start = 0;
+      repeat (N + 3) @(negedge clk);
+      result("D11", "random starts: taken exactly when ready = 1", taken_ok && ignored_ok && n_taken > 100 && n_ignored > 100,
+             $sformatf("%0d taken, %0d ignored", n_taken, n_ignored));
+    end
+
+    wait (d12 && d20 && d10);
+    $display("DONE: %0d passed, %0d failed", n_pass + p12 + p20 + p10, n_fail + f12 + f20 + f10);
     $finish;
   end
 endmodule

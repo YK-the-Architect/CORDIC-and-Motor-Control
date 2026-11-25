@@ -1,4 +1,6 @@
-//multiplexer
+//multiplexer, 2 to 1: mux_out = sel1 when sel = 1, else sel0.
+//The datapath uses one per lane to load a new operation (sel = init) and one to pick
+//atan(2^-i) or 2^-i for the z lane (sel = m: circular or linear mode).
 module cordic_mux #(
     parameter int WIDTH = 16
 ) (

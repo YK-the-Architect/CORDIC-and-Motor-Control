@@ -18,7 +18,7 @@ module tb_cordic;
   logic signed [WIDTH-1:0] x, y, z;
   logic out_valid;
 
-  cordic_ss #(.WIDTH(WIDTH), .ITER(ITER)) dut (.x_corr(x), .y_corr(y), .ovf(), .*);
+  cordic_ss #(.WIDTH(WIDTH), .ITER(ITER)) dut (.x_corr(x), .y_corr(y), .ovf(), .ready(), .*);
 
   always #5 clk = ~clk;             // 100 MHz
 

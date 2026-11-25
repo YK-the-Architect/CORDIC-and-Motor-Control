@@ -1,3 +1,7 @@
+//Datapath of the iterative engine: three lanes (x, y, z), each with an input mux, a register and
+//an add/sub; x and y also have a barrel shifter, and z adds atan(2^-i) (circular) or 2^-i (linear).
+//init loads a new operation (after the 180 degree fold); every clock with en = 1 then does one
+//CORDIC iteration with the i, m and sigma that the control unit gives.
 module datapath #(
     parameter WIDTH = 8,
     parameter ITER = 8,

@@ -1,0 +1,222 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Figure 1 of the report: render this page and take a screenshot of #d (1560 x 905 at 2x). -->
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#fff}
+svg{display:block;font-family:'IBM Plex Sans',sans-serif}
+.h1{font-size:26px;font-weight:600;fill:#1C2430}
+.h2{font-size:19px;font-weight:600;fill:#1C2430}
+.sub{font-size:12.5px;fill:#4A5560}
+.bt{font-size:13px;font-weight:600;fill:#1C2430}
+.bs{font-size:12px;fill:#3D4752}
+.tx{font-size:13px;fill:#1C2430}
+.tb{font-size:13px;font-weight:600;fill:#1C2430}
+.lbl{font-size:11px;fill:#4A5560}
+.eq{font-family:'IBM Plex Mono',monospace;font-size:12px;fill:#1C2430}
+.lane{fill:#F3F4F6;stroke:none}
+.oval{fill:#fff;stroke:#9AA0A6;stroke-width:1.3}
+.gray{fill:#DCDDD9;stroke:#9EA3A8;stroke-width:1.2}
+.reg{fill:#A9E2F6;stroke:#3FAAD8;stroke-width:1.2}
+.shf{fill:#94E6D9;stroke:#2DB3A0;stroke-width:1.2}
+.add{fill:#FBB781;stroke:#E5864A;stroke-width:1.2}
+.yel{fill:#FBE57C;stroke:#D7B52C;stroke-width:1.2}
+.pur{fill:#B7ABF7;stroke:#8E7CE8;stroke-width:1.2}
+.cyn{fill:#A5E4F7;stroke:#45B6DF;stroke-width:1.2}
+.new{fill:#F1EEFF;stroke:#6D4FF2;stroke-width:1.8;stroke-dasharray:7 5}
+.newin{fill:#FFFFFF;stroke:#6D4FF2;stroke-width:1.6;stroke-dasharray:6 4}
+.ln{stroke:#3D4752;stroke-width:1.5;fill:none}
+.fb{stroke:#3D4752;stroke-width:1.3;fill:none;stroke-dasharray:6 5}
+.ctl{stroke:#8E7CE8;stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+.fold{fill:#EDE9FE;stroke:#8E7CE8;stroke-width:1.2}
+.inbox{fill:#FFFFFF;stroke:#45B6DF;stroke-width:1.2}
+.hold{fill:#E4DFFB;stroke:#8E7CE8;stroke-width:1.2;stroke-dasharray:5 4}
+</style></head><body>
+<svg id="d" width="1560" height="905" viewBox="0 0 1560 905" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3D4752"/></marker>
+<marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8E7CE8"/></marker>
+</defs>
+
+<!-- title and legend -->
+<text class="h1" x="40" y="40">Iterative CORDIC engine (cordic_ss): datapath and control</text>
+
+<!-- ===== Multi mode datapath ===== -->
+<text class="h2" x="40" y="78">Datapath (datapath.sv)</text>
+<text class="sub" x="40" y="98">Solid lines carry data, dashed black lines are the per iteration feedback, dashed purple lines are control. Lanes are W + 2 + G bits wide: 2 headroom bits and G guard bits.</text>
+
+<rect class="lane" x="40" y="112" width="960" height="150" rx="4"/>
+<rect class="lane" x="40" y="277" width="960" height="150" rx="4"/>
+<rect class="lane" x="40" y="442" width="960" height="214" rx="4"/>
+
+<!-- pre-rotation (new) spanning the three lanes -->
+<rect class="fold" x="166" y="122" width="120" height="524" rx="8"/>
+<text class="tb" x="226" y="300" text-anchor="middle">180&#176; fold</text>
+<text class="bs" x="226" y="324" text-anchor="middle">turns (x, y) by 180&#176;:</text>
+<text class="bs" x="226" y="341" text-anchor="middle">negate x and y,</text>
+<text class="bs" x="226" y="358" text-anchor="middle">flip the MSB of z</text>
+<text class="bs" x="226" y="386" text-anchor="middle">rotation: when z</text>
+<text class="bs" x="226" y="403" text-anchor="middle">is past &#177;90&#176;</text>
+<text class="bs" x="226" y="427" text-anchor="middle">vectoring: x &lt; 0</text>
+<text class="bs" x="226" y="451" text-anchor="middle">divide, x &lt; 0:</text>
+<text class="bs" x="226" y="468" text-anchor="middle">negate x and y only</text>
+
+<!-- X lane: y0 = 112 -->
+<ellipse class="oval" cx="100" cy="165" rx="52" ry="22"/><text class="tx" x="100" y="169" text-anchor="middle">x_in</text>
+<line class="ln" x1="152" y1="165" x2="164" y2="165" marker-end="url(#a)"/>
+<line class="ln" x1="286" y1="165" x2="298" y2="165" marker-end="url(#a)"/>
+<rect class="gray" x="300" y="142" width="72" height="46"/><text class="bt" x="336" y="161" text-anchor="middle">MUX</text><text class="bs" x="336" y="178" text-anchor="middle">sel: init</text>
+<line class="ln" x1="372" y1="165" x2="408" y2="165" marker-end="url(#a)"/>
+<rect class="reg" x="410" y="142" width="112" height="46"/><text class="bt" x="466" y="161" text-anchor="middle">X reg</text><text class="bs" x="466" y="178" text-anchor="middle">en</text>
+<line class="ln" x1="522" y1="165" x2="828" y2="165" marker-end="url(#a)"/><text class="lbl" x="680" y="159" text-anchor="middle">x</text>
+<rect class="add" x="830" y="142" width="112" height="46"/><text class="bt" x="886" y="161" text-anchor="middle">+ / &#8722;</text><text class="bs" x="886" y="178" text-anchor="middle">AX, sub = &#963;</text>
+<path class="fb" d="M942 165 L970 165 L970 126 L336 126 L336 140" marker-end="url(#a)"/><text class="lbl" x="650" y="122" text-anchor="middle">x_next</text>
+<path class="ln" d="M466 188 L466 227 L558 227" marker-end="url(#a)"/>
+<rect class="shf" x="560" y="204" width="112" height="46"/><text class="bt" x="616" y="223" text-anchor="middle">x &gt;&gt; i</text><text class="bs" x="616" y="240" text-anchor="middle">shift by i</text>
+<rect class="gray" x="702" y="204" width="92" height="46"/><text class="bt" x="748" y="223" text-anchor="middle">AND</text><text class="bs" x="748" y="240" text-anchor="middle">gated by m</text>
+<path class="ln" d="M794 227 L886 227 L886 190" marker-end="url(#a)"/><text class="lbl" x="840" y="220" text-anchor="middle">m&#183;(y &gt;&gt; i)</text>
+<text class="tb" x="300" y="224">X lane</text>
+<text class="eq" x="300" y="243">x&#8242; = x &#8722; m&#183;&#963;&#183;(y&gt;&gt;i)</text>
+
+<!-- Y lane: y0 = 277 -->
+<ellipse class="oval" cx="100" cy="330" rx="52" ry="22"/><text class="tx" x="100" y="334" text-anchor="middle">y_in</text>
+<line class="ln" x1="152" y1="330" x2="164" y2="330" marker-end="url(#a)"/>
+<line class="ln" x1="286" y1="330" x2="298" y2="330" marker-end="url(#a)"/>
+<rect class="gray" x="300" y="307" width="72" height="46"/><text class="bt" x="336" y="326" text-anchor="middle">MUX</text><text class="bs" x="336" y="343" text-anchor="middle">sel: init</text>
+<line class="ln" x1="372" y1="330" x2="408" y2="330" marker-end="url(#a)"/>
+<rect class="reg" x="410" y="307" width="112" height="46"/><text class="bt" x="466" y="326" text-anchor="middle">Y reg</text><text class="bs" x="466" y="343" text-anchor="middle">en</text>
+<line class="ln" x1="522" y1="330" x2="828" y2="330" marker-end="url(#a)"/><text class="lbl" x="680" y="324" text-anchor="middle">y</text>
+<rect class="add" x="830" y="307" width="112" height="46"/><text class="bt" x="886" y="326" text-anchor="middle">+ / &#8722;</text><text class="bs" x="886" y="343" text-anchor="middle">AY, sub = NOT &#963;</text>
+<path class="fb" d="M942 330 L970 330 L970 291 L336 291 L336 305" marker-end="url(#a)"/><text class="lbl" x="650" y="287" text-anchor="middle">y_next</text>
+<path class="ln" d="M466 353 L466 392 L558 392" marker-end="url(#a)"/>
+<rect class="shf" x="560" y="369" width="112" height="46"/><text class="bt" x="616" y="388" text-anchor="middle">y &gt;&gt; i</text><text class="bs" x="616" y="405" text-anchor="middle">shift by i</text>
+<path class="ln" d="M672 392 L748 392 L748 252" marker-end="url(#a)"/><text class="lbl" x="756" y="372">y &gt;&gt; i</text>
+<path class="ln" d="M616 250 L616 270 L886 270 L886 305" marker-end="url(#a)"/><text class="lbl" x="800" y="266" text-anchor="middle">x &gt;&gt; i</text>
+<text class="tb" x="300" y="389">Y lane</text>
+<text class="eq" x="300" y="408">y&#8242; = y + &#963;&#183;(x&gt;&gt;i)</text>
+
+<!-- Z lane: y0 = 442 -->
+<ellipse class="oval" cx="100" cy="495" rx="52" ry="22"/><text class="tx" x="100" y="499" text-anchor="middle">z_in</text>
+<line class="ln" x1="152" y1="495" x2="164" y2="495" marker-end="url(#a)"/>
+<line class="ln" x1="286" y1="495" x2="298" y2="495" marker-end="url(#a)"/>
+<rect class="gray" x="300" y="472" width="72" height="46"/><text class="bt" x="336" y="491" text-anchor="middle">MUX</text><text class="bs" x="336" y="508" text-anchor="middle">sel: init</text>
+<line class="ln" x1="372" y1="495" x2="408" y2="495" marker-end="url(#a)"/>
+<rect class="reg" x="410" y="472" width="112" height="46"/><text class="bt" x="466" y="491" text-anchor="middle">Z reg</text><text class="bs" x="466" y="508" text-anchor="middle">en; holds for (0, 0)</text>
+<line class="ln" x1="522" y1="495" x2="828" y2="495" marker-end="url(#a)"/><text class="lbl" x="680" y="489" text-anchor="middle">z</text>
+<rect class="add" x="830" y="472" width="112" height="46"/><text class="bt" x="886" y="491" text-anchor="middle">+ / &#8722;</text><text class="bs" x="886" y="508" text-anchor="middle">AZ, sub = &#963;</text>
+<path class="fb" d="M942 495 L970 495 L970 456 L336 456 L336 470" marker-end="url(#a)"/><text class="lbl" x="650" y="452" text-anchor="middle">z_next</text>
+<rect class="yel" x="560" y="534" width="112" height="46"/><text class="bt" x="616" y="553" text-anchor="middle">atan ROM</text><text class="bs" x="616" y="570" text-anchor="middle">atan(2&#8315;&#8305;)</text>
+<line class="ln" x1="672" y1="557" x2="700" y2="557" marker-end="url(#a)"/>
+<rect class="gray" x="702" y="534" width="92" height="46"/><text class="bt" x="748" y="553" text-anchor="middle">MUX</text><text class="bs" x="748" y="570" text-anchor="middle">sel: m</text>
+<path class="ln" d="M794 557 L886 557 L886 520" marker-end="url(#a)"/><text class="lbl" x="840" y="550" text-anchor="middle">e_i</text>
+<rect class="yel" x="560" y="598" width="112" height="46"/><text class="bt" x="616" y="617" text-anchor="middle">1 &gt;&gt; i</text><text class="bs" x="616" y="634" text-anchor="middle">= 2&#8315;&#8305;</text>
+<path class="ln" d="M672 621 L748 621 L748 582" marker-end="url(#a)"/>
+<text class="tb" x="300" y="562">Z lane</text>
+<text class="eq" x="300" y="581">z&#8242; = z &#8722; &#963;&#183;e_i</text>
+<text class="eq" x="300" y="598">e_i = atan(2&#8315;&#8305;) or 2&#8315;&#8305;</text>
+
+<!-- control links between datapath and control unit -->
+<line class="ctl" x1="1023" y1="165" x2="1004" y2="165" marker-end="url(#p)"/>
+<line class="ctl" x1="1023" y1="330" x2="1004" y2="330" marker-end="url(#p)"/>
+<line class="ctl" x1="1023" y1="495" x2="1004" y2="495" marker-end="url(#p)"/>
+<line class="ctl" x1="1012" y1="150" x2="1012" y2="630"/>
+
+<!-- control unit -->
+<rect class="pur" x="1025" y="112" width="238" height="544"/>
+<text class="tb" x="1040" y="140">Control unit</text>
+<text class="tx" x="1040" y="160">FSM + counter i +</text>
+<text class="tx" x="1040" y="178">mode register</text>
+<text class="tb" x="1040" y="216">Drives</text>
+<text class="tx" x="1040" y="236">init: fold and</text>
+<text class="tx" x="1040" y="254">all three MUX</text>
+<text class="tx" x="1040" y="272">en: all three registers</text>
+<text class="tx" x="1040" y="290">i: shifters, ROM, 2&#8315;&#8305;</text>
+<text class="tx" x="1040" y="308">&#963;: all three + / &#8722;</text>
+<text class="tx" x="1040" y="326">m: AND gate, const MUX</text>
+<text class="tx" x="1040" y="344">scale_en: output stage</text>
+<text class="tx" x="1040" y="362">out_valid, ready: handshake</text>
+<text class="tb" x="1040" y="400">Reads</text>
+<text class="tx" x="1040" y="420">start, mode bits</text>
+<text class="tx" x="1040" y="438">z[MSB], y[MSB]</text>
+
+<!-- mode bits -->
+<rect class="pur" x="1293" y="112" width="240" height="150"/>
+<text class="tb" x="1308" y="140">Mode bits</text>
+<text class="tx" x="1308" y="162">mode_cl: 0 circular, 1 linear</text>
+<text class="tx" x="1308" y="182">mode_rv: 0 rotate, 1 vector</text>
+<text class="tx" x="1308" y="202">m = 1 in circular mode</text>
+<line class="ctl" x1="1293" y1="236" x2="1265" y2="236" marker-end="url(#p)"/>
+<text class="lbl" x="1308" y="249">to the control unit with start</text>
+
+<!-- output stage -->
+<rect class="cyn" x="1293" y="282" width="240" height="374"/>
+<text class="tb" x="1308" y="309">Output stage</text>
+<text class="tx" x="1308" y="329">error_correction.sv</text>
+<text class="eq" x="1308" y="357">x_out = K &#183; X</text>
+<text class="eq" x="1308" y="376">y_out = K &#183; Y</text>
+<text class="eq" x="1308" y="395">z_out = Z</text>
+<text class="tx" x="1308" y="422">K = 1/1.6468 = 0.6073, a</text>
+<text class="tx" x="1308" y="440">constant: shifts and adds;</text>
+<text class="tx" x="1308" y="458">off in linear mode</text>
+<rect class="inbox" x="1303" y="474" width="220" height="172" rx="6"/>
+<text class="tb" x="1316" y="497">Banker's rounding</text>
+<text class="tx" x="1316" y="515">drops the G guard bits,</text>
+<text class="tx" x="1316" y="533">ties go to even</text>
+<text class="tb" x="1316" y="561">Saturation and ovf</text>
+<text class="tx" x="1316" y="579">clamps to the W-bit range;</text>
+<text class="tx" x="1316" y="597">ovf = a clamp, a lane</text>
+<text class="tx" x="1316" y="615">overflow or a divide out</text>
+<text class="tx" x="1316" y="633">of range</text>
+<line class="ctl" x1="1265" y1="430" x2="1291" y2="430" marker-end="url(#p)"/>
+<text class="lbl" transform="translate(1279 400) rotate(-90)" text-anchor="middle">scale_en</text>
+
+<!-- ===== Control logic ===== -->
+<text class="h2" x="40" y="694">Control logic</text>
+<text class="sub" x="176" y="694">How the direction &#963;, the mode bits and out_valid are produced (control.sv).</text>
+
+<!-- direction sigma -->
+<text class="tb" x="40" y="724">Direction &#963;</text>
+<ellipse class="oval" cx="92" cy="752" rx="48" ry="18"/><text class="tx" x="92" y="756" text-anchor="middle">z[MSB]</text>
+<line class="ln" x1="140" y1="752" x2="166" y2="752" marker-end="url(#a)"/>
+<rect class="gray" x="168" y="736" width="56" height="32"/><text class="bt" x="196" y="757" text-anchor="middle">NOT</text>
+<line class="ln" x1="224" y1="752" x2="250" y2="752" marker-end="url(#a)"/><text class="lbl" x="237" y="746" text-anchor="middle">0</text>
+<rect class="gray" x="252" y="730" width="76" height="44"/><text class="bt" x="290" y="749" text-anchor="middle">MUX</text><text class="bs" x="290" y="765" text-anchor="middle">sel: vec</text>
+<ellipse class="oval" cx="92" cy="806" rx="48" ry="18"/><text class="tx" x="92" y="810" text-anchor="middle">y[MSB]</text>
+<path class="ln" d="M140 806 L290 806 L290 776" marker-end="url(#a)"/><text class="lbl" x="298" y="794">1</text>
+<line class="ln" x1="328" y1="752" x2="352" y2="752" marker-end="url(#a)"/>
+<ellipse cx="384" cy="752" rx="30" ry="18" fill="#B7ABF7" stroke="#8E7CE8" stroke-width="1.2"/><text class="tb" x="384" y="757" text-anchor="middle">&#963;</text>
+<line class="ln" x1="414" y1="752" x2="448" y2="752" marker-end="url(#a)"/>
+<rect class="add" x="450" y="736" width="160" height="32"/><text class="bt" x="530" y="757" text-anchor="middle">AX, AZ: sub = &#963;</text>
+<path class="ln" d="M384 770 L384 806 L404 806" marker-end="url(#a)"/>
+<rect class="gray" x="406" y="790" width="50" height="32"/><text class="bt" x="431" y="811" text-anchor="middle">NOT</text>
+<line class="ln" x1="456" y1="806" x2="482" y2="806" marker-end="url(#a)"/>
+<rect class="add" x="484" y="790" width="126" height="32"/><text class="bt" x="547" y="811" text-anchor="middle">AY: sub = NOT &#963;</text>
+<text class="bs" x="40" y="846">Rotation, vec = 0: &#963; = NOT z[MSB], so each step drives z toward 0.</text>
+<text class="bs" x="40" y="863">Vectoring, vec = 1: &#963; = y[MSB], so each step drives y toward 0;</text>
+<text class="bs" x="40" y="880">the fold makes x &#8805; 0 first.</text>
+
+<!-- mode register -->
+<text class="tb" x="650" y="724">Mode register</text>
+<ellipse class="oval" cx="702" cy="782" rx="50" ry="26"/><text class="tx" x="702" y="778" text-anchor="middle">mode bits</text><text class="bs" x="702" y="794" text-anchor="middle">from user</text>
+<line class="ln" x1="752" y1="782" x2="774" y2="782" marker-end="url(#a)"/>
+<rect class="pur" x="776" y="738" width="208" height="88"/>
+<text class="tb" x="786" y="759">Mode register, latched on start</text>
+<text class="bs" x="786" y="779">m &#8594; AND gate and const MUX</text>
+<text class="bs" x="786" y="797">vec &#8594; &#963; MUX</text>
+<text class="bs" x="786" y="815">scale_en &#8594; output stage</text>
+
+<!-- FSM -->
+<text class="tb" x="1000" y="724">Control FSM</text>
+<text class="bs" x="1000" y="744">EXE runs i = 0 to N&#8722;1 (linear: 1 to N&#8722;1), one iteration per clock</text>
+<rect x="1000" y="790" width="92" height="46" rx="8" class="pur"/><text class="bt" x="1046" y="809" text-anchor="middle">IDLE</text><text class="bs" x="1046" y="825" text-anchor="middle">ready = 1</text>
+<line class="ln" x1="1092" y1="813" x2="1146" y2="813" marker-end="url(#a)"/><text class="lbl" x="1119" y="806" text-anchor="middle">start</text>
+<rect x="1148" y="790" width="104" height="46" rx="8" class="pur"/><text class="bt" x="1200" y="809" text-anchor="middle">EXE</text><text class="bs" x="1200" y="825" text-anchor="middle">en, i = i + 1</text>
+<line class="ln" x1="1252" y1="813" x2="1300" y2="813" marker-end="url(#a)"/><text class="lbl" x="1276" y="806" text-anchor="middle">i = N&#8722;1</text>
+<rect x="1302" y="790" width="86" height="46" rx="8" class="hold"/><text class="bt" x="1345" y="809" text-anchor="middle">HOLD</text><text class="bs" x="1345" y="825" text-anchor="middle">OUT_WAIT = 1</text>
+<line class="ln" x1="1388" y1="813" x2="1418" y2="813" marker-end="url(#a)"/>
+<rect x="1420" y="790" width="110" height="46" rx="8" class="pur"/><text class="bt" x="1475" y="809" text-anchor="middle">DONE</text><text class="bs" x="1475" y="825" text-anchor="middle">out_valid, ready</text>
+<path class="ln" d="M1200 790 L1200 768 L1475 768 L1475 788" marker-end="url(#a)"/><text class="lbl" x="1338" y="762" text-anchor="middle">i = N&#8722;1 with OUT_WAIT = 0</text>
+<path class="ln" d="M1455 836 L1455 856 L1220 856 L1220 838" marker-end="url(#a)"/><text class="lbl" x="1338" y="851" text-anchor="middle">start: next operation, back to back</text>
+<path class="ln" d="M1500 836 L1500 880 L1046 880 L1046 838" marker-end="url(#a)"/><text class="lbl" x="1270" y="895" text-anchor="middle">no start</text>
+</svg>
+</body></html>

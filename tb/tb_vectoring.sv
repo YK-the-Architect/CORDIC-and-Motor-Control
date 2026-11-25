@@ -19,7 +19,7 @@ module tb_vectoring;
   localparam real TURN = real'(1 << W);
   localparam real TOL  = 2.0;
 
-  logic clk = 0, rst, start, mode_cl, mode_rv, out_valid, ovf;
+  logic clk = 0, rst, start, mode_cl, mode_rv, out_valid, ovf, ready;
   logic signed [W-1:0] x_in, y_in, z_in, x_corr, y_corr, z;
   cordic_ss #(.WIDTH(W), .ITER(N)) dut (.*);
   always #5 clk = ~clk;

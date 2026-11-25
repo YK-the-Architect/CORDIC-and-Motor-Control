@@ -1,3 +1,5 @@
+//2^-i for linear mode (multiply and divide): the constant 1.0 shifted right by the iteration
+//count i. In linear mode the z lane adds or subtracts this instead of atan(2^-i).
 module one_shifted #(
     parameter int WIDTH = 8,
     parameter int ITER  = 8,          // new: lets datapath pass ITER in

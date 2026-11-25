@@ -15,7 +15,7 @@
 
 module e6_check (input logic clk, output int passed, output int failed, output logic done);
   localparam int W = 8, N = 8;
-  logic rst, start, mode_cl, mode_rv, out_valid, ovf;
+  logic rst, start, mode_cl, mode_rv, out_valid, ovf, ready;
   logic signed [W-1:0] x_in, y_in, z_in, x_corr, y_corr, z;
   cordic_ss #(.WIDTH(W), .ITER(N)) dut (.*);
   `include "tb_common.svh"
@@ -40,7 +40,7 @@ endmodule
 
 module tb_rotation;
   localparam int W = 16, N = 16;
-  logic clk = 0, rst, start, mode_cl, mode_rv, out_valid, ovf;
+  logic clk = 0, rst, start, mode_cl, mode_rv, out_valid, ovf, ready;
   logic signed [W-1:0] x_in, y_in, z_in, x_corr, y_corr, z;
   cordic_ss #(.WIDTH(W), .ITER(N)) dut (.*);
   always #5 clk = ~clk;
